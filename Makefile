@@ -19,3 +19,4 @@ server:
 # Clean build artifacts
 clean:
 	rm -rf dist
+
