@@ -32,7 +32,11 @@ coverage/
 .idea/
 *.swp
 *.swo
+
+# Emacs
 *~
+.#*
+#*#
 
 # OS files
 .DS_Store
