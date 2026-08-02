@@ -21,7 +21,7 @@ const UnoClient = Client({
 });
 
 function SinglePlayer() {
-  return <UnoClient matchID="single" playerID="0" />;
+  return <UnoClient matchID="single" playerID="0" playerName="You" />;
 }
 
 // --- Multiplayer lobby ---

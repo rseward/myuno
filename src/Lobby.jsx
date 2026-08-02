@@ -29,8 +29,25 @@ export function LobbyView({
   const [enteredName, setEnteredName] = useState(playerName || '');
   const [selectedGame, setSelectedGame] = useState(0);
   const [numPlayers, setNumPlayers] = useState(2);
+  const [deleteError, setDeleteError] = useState('');
 
   const inGame = phase === 'play';
+
+  // Delete a match via the debug endpoint
+  const handleDeleteMatch = async (matchID) => {
+    const host = window.location.hostname;
+    try {
+      const resp = await fetch(`http://${host}:8002/debug/delete/${matchID}`, { method: 'POST' });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${resp.status}`);
+      }
+      setDeleteError('');
+      handleRefreshMatches();
+    } catch (e) {
+      setDeleteError(`Failed to delete match: ${e.message}`);
+    }
+  };
 
   // -- Login phase --
   if (phase === 'enter') {
@@ -89,6 +106,7 @@ export function LobbyView({
             matchID={runningMatch.matchID}
             playerID={runningMatch.playerID}
             credentials={runningMatch.credentials}
+            playerName={playerName}
             onExitMatch={handleExitMatch}
           />
         )}
@@ -128,6 +146,11 @@ export function LobbyView({
       {errorMsg && (
         <div className="bg-uno-red/20 border border-uno-red text-red-300 rounded-xl px-5 py-3 mb-6 text-base">
           {errorMsg}
+        </div>
+      )}
+      {deleteError && (
+        <div className="bg-uno-red/20 border border-uno-red text-red-300 rounded-xl px-5 py-3 mb-6 text-base">
+          {deleteError}
         </div>
       )}
 
@@ -195,6 +218,7 @@ export function LobbyView({
                 onJoin={handleJoinMatch}
                 onLeave={handleLeaveMatch}
                 onPlay={handleStartMatch}
+                onDelete={handleDeleteMatch}
               />
             ))}
           </div>
@@ -210,7 +234,7 @@ export function LobbyView({
           </p>
           <div className="space-y-3">
             {finishedMatches.map((match) => (
-              <FinishedMatchRow key={match.matchID} match={match} />
+              <FinishedMatchRow key={match.matchID} match={match} onDelete={handleDeleteMatch} />
             ))}
           </div>
         </div>
@@ -219,8 +243,14 @@ export function LobbyView({
   );
 }
 
-function MatchRow({ match, playerName, onJoin, onLeave, onPlay }) {
-  const { matchID, gameName, players } = match;
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function MatchRow({ match, playerName, onJoin, onLeave, onPlay, onDelete }) {
+  const { matchID, gameName, players, createdAt } = match;
   const playerList = Object.values(players);
   const playerSeat = playerList.find((p) => p.name === playerName);
   const freeSeat = playerList.find((p) => !p.name);
@@ -239,7 +269,7 @@ function MatchRow({ match, playerName, onJoin, onLeave, onPlay }) {
           </span>
         </div>
         <span className="text-slate-500 text-sm font-mono">
-          ID: {matchID.slice(0, 12)}...
+          ID: {matchID.slice(0, 12)}... {createdAt && `| started ${formatTime(createdAt)}`}
         </span>
       </div>
 
@@ -303,22 +333,30 @@ function MatchRow({ match, playerName, onJoin, onLeave, onPlay }) {
             Spectate
           </button>
         )}
+        <button
+          onClick={() => onDelete(matchID)}
+          className="bg-uno-red/80 hover:bg-uno-red text-white px-4 py-2 rounded-lg text-sm font-bold transition"
+          title="Delete this match"
+        >
+          Delete
+        </button>
       </div>
     </div>
   );
 }
 
-function FinishedMatchRow({ match }) {
-  const { matchID, gameName, players, gameover, updatedAt } = match;
+function FinishedMatchRow({ match, onDelete }) {
+  const { matchID, gameName, players, gameover, updatedAt, createdAt } = match;
   const playerList = Object.values(players);
   const winnerId = gameover?.winner;
-  const winnerName = playerList.find((p) => p.id === winnerId)?.name || `Player ${winnerId}`;
+  const winnerName = playerList.find((p) => String(p.id) === String(winnerId))?.name || `Player ${winnerId}`;
 
   // Calculate how long ago the match was last updated
   const lastUpdate = updatedAt ? new Date(updatedAt) : null;
   const timeStr = lastUpdate
     ? lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
+  const startTimeStr = createdAt ? formatTime(createdAt) : '';
 
   return (
     <div className="bg-uno-dark rounded-xl p-5 border border-slate-700 flex flex-wrap items-center justify-between gap-4 opacity-80">
@@ -331,7 +369,7 @@ function FinishedMatchRow({ match }) {
           </span>
         </div>
         <span className="text-slate-500 text-sm font-mono">
-          ID: {matchID.slice(0, 12)}... {timeStr && `| ended ${timeStr}`}
+          ID: {matchID.slice(0, 12)}... {startTimeStr && `| started ${startTimeStr}`}{timeStr && ` | ended ${timeStr}`}
         </span>
       </div>
 
@@ -343,8 +381,8 @@ function FinishedMatchRow({ match }) {
         </span>
       </div>
 
-      {/* Player seats (read-only) */}
-      <div className="flex gap-2 flex-wrap">
+      {/* Player seats (read-only) + Delete */}
+      <div className="flex items-center gap-2 flex-wrap">
         {playerList.map((p, i) => (
           <div
             key={i}
@@ -359,6 +397,13 @@ function FinishedMatchRow({ match }) {
             {p.name || '[empty]'}
           </div>
         ))}
+        <button
+          onClick={() => onDelete(matchID)}
+          className="bg-uno-red/80 hover:bg-uno-red text-white px-4 py-2 rounded-lg text-sm font-bold transition ml-2"
+          title="Delete this match"
+        >
+          Delete
+        </button>
       </div>
     </div>
   );

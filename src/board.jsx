@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cardImage, cardName } from './game.js';
 
 const COLORS = ['red', 'yellow', 'green', 'blue'];
@@ -56,12 +56,32 @@ function ColorPicker({ onPick }) {
   );
 }
 
-export function Board({ G, ctx, moves, playerID, isActive, onExitMatch }) {
+export function Board({ G, ctx, moves, playerID, isActive, playerName: myPlayerName, onExitMatch }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [pendingWildCard, setPendingWildCard] = useState(null);
 
+  // Guard against null G during WebSocket reconnection
+  if (!G) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#ccc' }}>
+        Connecting to game...
+      </div>
+    );
+  }
+
   const pid = parseInt(playerID) ?? 0;
+
+  // Register our display name in game state.
+  // Must fire when isActive changes because boardgame.io only accepts
+  // moves from the active player — calling on mount alone fails for
+  // players whose turn hasn't come up yet (their name stays "Bot N").
+  useEffect(() => {
+    if (myPlayerName && moves?.setDisplayName) {
+      moves.setDisplayName(myPlayerName);
+    }
+  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const myHand = G.hands?.[pid] || [];
   const topCard = G.discardPile?.[G.discardPile.length - 1];
   // With Local() multiplayer, isActive is true only when it's our turn.
@@ -124,8 +144,8 @@ export function Board({ G, ctx, moves, playerID, isActive, onExitMatch }) {
 
   // Winner banner
   if (G.winner !== null) {
-    const winnerName = G.playerNames[G.winner] || `Player ${G.winner}`;
-    const isMe = G.winner === pid;
+    const winnerName = G.playerNames[G.winner] || G.playerNames?.[String(G.winner)] || G.playerNames?.[parseInt(G.winner)] || `Player ${G.winner}`;
+    const isMe = String(G.winner) === String(pid);
     return (
       <div style={styles.winnerScreen}>
         <h1 style={styles.winnerText}>{isMe ? 'You Win!' : `${winnerName} Wins!`}</h1>
@@ -167,7 +187,7 @@ export function Board({ G, ctx, moves, playerID, isActive, onExitMatch }) {
       {/* Status bar */}
       <div style={styles.statusBar}>
         <span style={styles.statusText}>
-          {isMyTurn ? 'Your turn' : `Bot thinking... (Player ${ctx.currentPlayer})`}
+          {isMyTurn ? 'Your turn' : `Waiting for ${G.playerNames?.[ctx.currentPlayer] || 'Player ' + ctx.currentPlayer}...`}
         </span>
         <span style={styles.statusText}>
           {G.pendingDraw > 0 && `Pending: +${G.pendingDraw} cards`}

@@ -28,6 +28,7 @@ db.wipe = async function (matchID) {
       metadata.deletedAt = Date.now();
       this.metadata.set(matchID, metadata);
       const winnerName = metadata.players?.[metadata.gameover.winner]?.name
+        || metadata.players?.[parseInt(metadata.gameover.winner)]?.name
         || `Player ${metadata.gameover.winner}`;
       console.log(`Match ${matchID} ended, deferring deletion for ${RETENTION_MS / 60000} min (winner: ${winnerName})`);
       return;
@@ -38,17 +39,66 @@ db.wipe = async function (matchID) {
   return originalWipe(matchID);
 };
 
-// Periodic cleanup: remove matches whose retention period has elapsed
+// Periodic cleanup: remove matches whose retention period has elapsed.
+// Two cases:
+//   1. Match was ended and a player left -> deletedAt was set by the wipe wrapper.
+//   2. Match was ended but nobody left -> use updatedAt as the fallback timestamp.
 setInterval(() => {
   const entries = [...db.metadata.entries()];
   const now = Date.now();
   for (const [matchID, metadata] of entries) {
-    if (metadata.deletedAt && now - metadata.deletedAt > RETENTION_MS) {
+    if (!metadata.gameover) continue;
+    const since = metadata.deletedAt || metadata.updatedAt;
+    if (since && now - since > RETENTION_MS) {
       originalWipe(matchID);
       console.log(`Match ${matchID} cleaned up (retention period elapsed)`);
     }
   }
 }, 60 * 1000); // check every minute
+
+// Debug endpoint: GET /debug/creds?name=Friday&matchID=xxx
+// Returns the player credentials for development/testing purposes.
+// boardgame.io uses Koa + @koa/router internally.
+const Koa = (await import('koa')).default;
+const Router = (await import('@koa/router')).default;
+const koaCors = (await import('@koa/cors')).default;
+const debugApp = new Koa();
+const debugRouter = new Router();
+debugApp.use(koaCors({ origin: '*' }));
+debugRouter.get('/debug/creds', (ctx) => {
+  const name = ctx.query.name;
+  const matchID = ctx.query.matchID;
+  const entries = [...db.metadata.entries()];
+  for (const [mid, metadata] of entries) {
+    if (matchID && mid !== matchID) continue;
+    for (const player of Object.values(metadata.players || {})) {
+      if (player.name === name) {
+        ctx.body = { matchID: mid, playerID: player.id, credentials: player.credentials };
+        return;
+      }
+    }
+  }
+  ctx.status = 404;
+  ctx.body = { error: 'not found' };
+});
+
+// Delete a match by ID (for lobby "Delete" button)
+debugRouter.post('/debug/delete/:matchID', (ctx) => {
+  const matchID = ctx.params.matchID;
+  if (db.metadata.has(matchID)) {
+    originalWipe(matchID);
+    console.log(`Match ${matchID} deleted via debug endpoint`);
+    ctx.body = { ok: true, matchID };
+  } else {
+    ctx.status = 404;
+    ctx.body = { error: 'match not found' };
+  }
+});
+debugApp.use(debugRouter.routes());
+debugApp.use(debugRouter.allowedMethods());
+debugApp.listen(PORT + 1, () => {
+  console.log(`Debug endpoint running on http://localhost:${PORT + 1}`);
+});
 
 server.run(PORT, () => {
   console.log(`UNO server running on http://localhost:${PORT}`);

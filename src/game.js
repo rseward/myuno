@@ -7,6 +7,11 @@
 const COLORS = ['red', 'yellow', 'green', 'blue'];
 const VALUES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'skip', 'reverse', 'draw2'];
 
+// Helper: get display name for a player
+function playerName(G, playerId) {
+  return G.playerNames?.[playerId] || G.playerNames?.[String(playerId)] || G.playerNames?.[parseInt(playerId)] || `Player ${playerId}`;
+}
+
 // Build the standard 108-card deck
 function buildDeck() {
   const deck = [];
@@ -95,6 +100,10 @@ export const UnoGame = {
     const deck = shuffle(buildDeck());
     const hands = {};
     const playerNames = setupData?.playerNames || {};
+    // Default names for bot seats in single-player mode
+    for (let p = 0; p < numPlayers; p++) {
+      if (!playerNames[p] && p > 0) playerNames[p] = `Bot ${p}`;
+    }
 
     // Deal 7 cards to each player
     for (let p = 0; p < numPlayers; p++) {
@@ -180,7 +189,7 @@ export const UnoGame = {
       }
 
       G.currentValues = card;
-      G.lastMessage = `Player ${player} played ${cardName(card)}`;
+      G.lastMessage = `${playerName(G, player)} played ${cardName(card)}`;
 
       // Handle action cards
       if (card.value === 'skip') {
@@ -210,7 +219,7 @@ export const UnoGame = {
       // Check for win
       if (hand.length === 0) {
         G.winner = player;
-        G.lastMessage = `Player ${player} wins!`;
+        G.lastMessage = `${playerName(G, player)} wins!`;
       }
     },
 
@@ -232,7 +241,7 @@ export const UnoGame = {
           }
         }
         G.pendingDraw = 0;
-        G.lastMessage = `Player ${player} drew ${drawCount} cards`;
+        G.lastMessage = `${playerName(G, player)} drew ${drawCount} cards`;
         events.endTurn();
         return;
       }
@@ -250,7 +259,7 @@ export const UnoGame = {
       if (G.deck.length > 0) {
         const drawnCard = G.deck.pop();
         G.hands[player].push(drawnCard);
-        G.lastMessage = `Player ${player} drew a card`;
+        G.lastMessage = `${playerName(G, player)} drew a card`;
       }
       events.endTurn();
     },
@@ -258,7 +267,7 @@ export const UnoGame = {
     // Pass turn (after drawing)
     passTurn: ({ G, ctx, playerID, events }) => {
       const player = playerID || ctx.currentPlayer;
-      G.lastMessage = `Player ${player} passed`;
+      G.lastMessage = `${playerName(G, player)} passed`;
       events.endTurn();
     },
 
@@ -266,7 +275,14 @@ export const UnoGame = {
     sayUno: ({ G, ctx, playerID }) => {
       const player = playerID || ctx.currentPlayer;
       G.saidUno[player] = true;
-      G.lastMessage = `Player ${player} said UNO!`;
+      G.lastMessage = `${playerName(G, player)} said UNO!`;
+    },
+
+    // Set player display name (called by each client on game start)
+    setDisplayName: ({ G, ctx, playerID }, name) => {
+      const player = playerID || ctx.currentPlayer;
+      if (!G.playerNames) G.playerNames = {};
+      G.playerNames[player] = name;
     },
   },
 
