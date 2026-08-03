@@ -113,3 +113,20 @@ For full details — lobby flow, output format, bot strategy, server API, and co
 
 Card images are from https://github.com/john-costantzo/uno-card-images
 Original credit: https://www.reddit.com/user/kuroakela/
+
+## Docker / Podman
+
+A container image of the multiplayer server is published to GitLab Container Registry.
+The GitLab project is at: https://gitlab.com/rseward1/myuno/
+
+### Pulling the image for deployment
+
+```bash
+podman pull registry.gitlab.com/rseward1/myuno:latest
+```
+
+Then run it, exposing the game server (8001) and debug endpoint (8002):
+
+```bash
+podman run -d --name myuno -p 8001:8001 -p 8002:8002 registry.gitlab.com/rseward1/myuno:latest
+```

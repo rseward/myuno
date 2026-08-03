@@ -1,4 +1,4 @@
-.PHONY: run build dev server clean
+.PHONY: run build dev server clean docker
 
 # Default: build then serve
 run: build
@@ -20,3 +20,14 @@ server:
 clean:
 	rm -rf dist
 
+docker:
+	./scripts/podman_build.sh
+
+login:
+	./scripts/gitlab_login.sh
+
+push:
+	./scripts/gitlab_push.sh
+
+pull:
+	./scripts/gitlab_pull.sh

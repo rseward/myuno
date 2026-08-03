@@ -403,6 +403,15 @@ class UnoBot:
         if str(self.ctx.get("currentPlayer")) != str(self.player_id):
             return
 
+        # Register our display name on our first turn (fixes "Bot 0" showing
+        # instead of our real name in the winner screen)
+        player_names = self.G.get("playerNames", {})
+        my_current_name = player_names.get(str(self.player_id)) or player_names.get(self.player_id)
+        if my_current_name != self.player_name:
+            print(f"[bot] Setting display name to '{self.player_name}'...")
+            self._send_move({"move": "setDisplayName", "args": [self.player_name]})
+            return
+
         move = choose_move(self.G, self.ctx, self.player_id)
         if move:
             # Small delay so we don't spam moves instantly
@@ -614,19 +623,6 @@ def main():
     num_players = len(m.get("players", []))
 
     print(f"[bot] Ready: match={match_id}  seat={player_id}  name='{args.name}'  players={num_players}")
-
-    # Wait for all seats to be filled before connecting
-    print("[bot] Waiting for all players to join...")
-    while True:
-        m = get_match(args.server, match_id)
-        players = m.get("players", [])
-        empty = [p for p in players if not p.get("name")]
-        if not empty:
-            print(f"[bot] All {len(players)} seats filled. Starting game.")
-            break
-        names = [p.get("name") or "[empty]" for p in players]
-        print(f"[bot] Seats: {' | '.join(names)} — waiting...")
-        time.sleep(2)
 
     bot = UnoBot(
         server=args.server,
