@@ -23,6 +23,24 @@ body {
   background: #4b5563;
 }
 
+/* Turn indicator — pulsing glow when it's your turn */
+@keyframes turn-glow-pulse {
+  0%, 100% { text-shadow: 0 0 16px rgba(46, 204, 113, 0.6); }
+  50% { text-shadow: 0 0 28px rgba(46, 204, 113, 0.95); }
+}
+.turn-glow-active {
+  animation: turn-glow-pulse 2s ease-in-out infinite;
+}
+
+/* Color box — subtle brightness pulse to draw the eye */
+@keyframes color-glow-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
+.color-glow-pulse {
+  animation: color-glow-pulse 2.5s ease-in-out infinite;
+}
+
 /* Smooth collapse animation */
 .lobby-collapse {
   transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;

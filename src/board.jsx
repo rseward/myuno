@@ -184,17 +184,33 @@ export function Board({ G, ctx, moves, playerID, isActive, playerName: myPlayerN
     <div style={styles.board}>
       {showColorPicker && <ColorPicker onPick={handleColorPick} />}
 
-      {/* Status bar */}
+      {/* Turn & color indicator — pinned to left edge, vertically centered */}
+      <div style={styles.turnIndicator}>
+        <div
+          className={isMyTurn ? 'turn-glow-active' : ''}
+          style={styles.turnText(isMyTurn)}
+        >
+          {isMyTurn ? 'YOUR TURN' : `${(G.playerNames?.[ctx.currentPlayer] || 'Player ' + ctx.currentPlayer).toUpperCase()}'S TURN`}
+        </div>
+        <div
+          className="color-glow-pulse"
+          style={{
+            ...styles.colorBox,
+            background: COLOR_HEX[G.currentColor] || COLOR_HEX.wild,
+            boxShadow: `0 0 24px ${COLOR_HEX[G.currentColor] || COLOR_HEX.wild}AA, inset 0 0 0 3px rgba(255,255,255,0.2)`,
+          }}
+        >
+          <span style={styles.colorBoxText}>{G.currentColor}</span>
+        </div>
+      </div>
+
+      {/* Status bar — secondary info only (turn + color are in the center panel) */}
       <div style={styles.statusBar}>
-        <span style={styles.statusText}>
-          {isMyTurn ? 'Your turn' : `Waiting for ${G.playerNames?.[ctx.currentPlayer] || 'Player ' + ctx.currentPlayer}...`}
-        </span>
-        <span style={styles.statusText}>
-          {G.pendingDraw > 0 && `Pending: +${G.pendingDraw} cards`}
-        </span>
-        <span style={styles.statusText}>
-          Current color: <span style={{ color: COLOR_HEX[G.currentColor], fontWeight: 'bold', textTransform: 'capitalize' }}>{G.currentColor}</span>
-        </span>
+        {G.pendingDraw > 0 && (
+          <span style={{ ...styles.statusText, color: '#e74c3c', fontWeight: 'bold' }}>
+            Pending: +{G.pendingDraw} cards
+          </span>
+        )}
         {G.lastMessage && <span style={styles.statusMsg}>{G.lastMessage}</span>}
       </div>
 
@@ -294,6 +310,7 @@ export function Board({ G, ctx, moves, playerID, isActive, playerName: myPlayerN
 
 const styles = {
   board: {
+    position: 'relative',
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
@@ -365,6 +382,45 @@ const styles = {
     height: '24px',
     borderRadius: '50%',
     border: '3px solid white',
+  },
+  turnIndicator: {
+    position: 'absolute',
+    left: '16px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '14px',
+    minWidth: '140px',
+    zIndex: 10,
+  },
+  turnText: (isMyTurn) => ({
+    fontSize: '24px',
+    fontWeight: '900',
+    letterSpacing: '1px',
+    color: isMyTurn ? '#2ecc71' : '#888',
+    textShadow: isMyTurn ? '0 0 16px rgba(46, 204, 113, 0.6)' : 'none',
+    textAlign: 'center',
+    lineHeight: '1.2',
+  }),
+  colorBox: {
+    width: '130px',
+    height: '78px',
+    borderRadius: '14px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    border: '2px solid rgba(255,255,255,0.3)',
+    transition: 'background 0.3s ease, box-shadow 0.3s ease',
+  },
+  colorBoxText: {
+    fontSize: '22px',
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.9)',
+    textTransform: 'capitalize',
+    textShadow: '0 2px 6px rgba(0,0,0,0.6)',
+    letterSpacing: '2px',
   },
   actionBar: {
     display: 'flex',
