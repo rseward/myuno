@@ -121,8 +121,15 @@ The GitLab project is at: https://gitlab.com/rseward1/myuno/
 
 ### Pulling the image for deployment
 
+The `:latest` tag always points to the most recent release. Specific versions
+are also tagged (e.g. `:0.1.0`):
+
 ```bash
+# Latest release
 podman pull registry.gitlab.com/rseward1/myuno:latest
+
+# Specific version
+podman pull registry.gitlab.com/rseward1/myuno:0.1.0
 ```
 
 Then run it, exposing the game server (8001) and debug endpoint (8002):
